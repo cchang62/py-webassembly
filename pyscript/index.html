@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+        <!--
+            <title>PyScript!</title>
+            <link
+            rel="stylesheet"
+            href="https://pyscript.net/snapshots/2024.9.2/core.css"
+            />
+            <script
+                type="module"
+                src="https://pyscript.net/snapshots/2024.9.2/core.js"
+            ></script>
+            <link rel="stylesheet" href="https://pyscript.net/alpha/pyscript.css" />
+            <script defer src="https://pyscript.net/alpha/pyscript.js"></script>
+            <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js"></script>
+            <py-env>
+                - numpy
+                - matplotlib
+            </py-env>
+        -->
+        <title>🦜 Polyglot - Piratical PyScript</title>
+        <link rel="stylesheet" href="https://pyscript.net/releases/2025.2.4/core.css">
+        <script type="module" src="https://pyscript.net/releases/2025.2.4/core.js"></script>
+        <py-config>
+            packages = ["matplotlib", "pandas"]
+        </py-config>
+    </head>
+    <body>
+        <!-- Use MicroPython to evaluate some Python -->
+        <h1>Hello, PyScript</h1>
+        <h3 style="color: green;">Success</h3>
+        <script type="mpy" terminal>
+            print("Hello, world!")
+        </script>
+
+        <h1>Matplotlib</h1>
+        <h3 style="color: #f00;">Failed</h3>
+        <div id="plot"></div>
+        <py-script target="plot">
+            # await micropip.install("matplotlib")
+            # import pyodide_js
+            # import micropip
+            # wait micropip.install("matplotlib")
+            # await pyodide_js.loadPackage('matplotlib')
+            import matplotlib.pyplot as plt
+            import numpy as np
+            
+            x = np.random.randn(1000)
+            y = np.random.randn(1000)
+            
+            fig, ax = plt.subplots()
+            ax.scatter(x, y)
+            fig
+        </py-script>
+
+        <h1>Polyglot 🦜 💬 🇬🇧 ➡️ 🏴‍☠️</h1>
+        <h3 style="color: #f00;">Failed w/ live server</h3>
+        <p>Translate English into Pirate speak...</p>
+        <input type="text" id="english" placeholder="Type English here..." />
+        <button py-click="translate_english">Translate</button>
+        <div id="output"></div>
+        <script type="py" src="http://127.0.0.1:5500/main.py" config="http://127.0.0.1:5500/pyscript.json"></script>
+    </body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Running Python in the browser using WebAssembly and Pyodide</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js"></script>
+</head>
+
+<body>
+    <h1>Calculate the square of a number using Python in WebAssembly</h1>
+    <input type="number" id="number" placeholder="Enter a number">
+    <button id="calculate">Calculate</button>
+    <p id="result"></p>
+
+    <script>
+        var pyodide;
+        
+        async function main() {
+            let pyodide = await loadPyodide();
+            
+            console.log('Pyodide is ready to use!');
+            console.log(pyodide);
+            // Load and run the Python code
+            pyodide.globals.set("square", x => x * x)
+            return pyodide
+        }
+        pyodide = main();
+        console.log(pyodide);
+        Promise.resolve(pyodide).then((pyodide) => {
+            console.log(pyodide);
+            const calculateButton = document.getElementById('calculate');
+            const numberInput = document.getElementById('number');
+            const resultElement = document.getElementById('result');
+
+            calculateButton.addEventListener('click', async () => {
+                const number = parseInt(numberInput.value);
+                console.log(pyodide);
+                const result = pyodide.runPython('square(' + number + ')');
+                resultElement.textContent = `The square of ${number} is ${result}.`;
+                // --- Start of the code : File I/O ---
+                const dirHandle = await showDirectoryPicker();
+                const permissionStatus = await dirHandle.requestPermission({
+                mode: "readwrite",
+                });
+
+                if (permissionStatus !== "granted") {
+                throw new Error("readwrite access to directory not granted");
+                }
+                const nativefs = await pyodide.mountNativeFS("./", dirHandle);
+                pyodide.runPython(`
+                import os
+                print(os.listdir('./'))
+                `);
+                pyodide.runPython(`
+                with open('./new_file.txt', 'w') as f:
+                    f.write("` + result + `");
+                `);
+                await nativefs.syncfs();
+                // --- End of the code : File I/O ---
+
+                // --- Start of the code : External Python Package ---
+                await pyodide.loadPackage('micropip');
+                await pyodide.runPythonAsync(`
+                    import micropip
+                    await micropip.install('numpy')
+                `);
+                const numpyResult = pyodide.runPython(`
+                    import numpy as np
+                    np.sqrt(${number})
+                `);
+                console.log(`The square root of ${number} using numpy is ${numpyResult}`);
+                // --- End of the code : External Python Package ---
+            });
+        });
+    </script>
+</body>
+
+</html>
+
+<!--
+
+
+<!doctype html>
+<html>
+
+<head>
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.3/full/pyodide.js"></script>
+</head>
+
+<body>
+    <script type="text/javascript">
+        async function main() {
+            let pyodide = await loadPyodide();
+            console.log(pyodide.runPython("1 + 2"));
+        }
+        main();
+    </script>
+</body>
+
+</html>
+
+-->
