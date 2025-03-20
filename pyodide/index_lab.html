@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Running Python in the browser using WebAssembly and Pyodide</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js"></script>
+</head>
+
+<body>
+    <h1>Calculate the square of a number using Python in WebAssembly</h1>
+    <input type="number" id="inputNo" placeholder="Enter a number">
+    <button id="calculate">Calculate</button>
+    <p id="result"></p>
+    <script>
+        var pyodide;
+        
+        async function main() {
+            let pyodide = await loadPyodide();
+            
+            await pyodide.loadPackage('micropip');
+            await pyodide.runPythonAsync(`
+                import micropip
+                await micropip.install('numpy')
+            `);
+            await pyodide.runPythonAsync(`
+                import numpy as np
+                from pyodide.http import pyfetch
+
+                async def load_python_file():
+                    response = await pyfetch("square.py")
+                    with open("square.py", "wb") as f:
+                        f.write(await response.bytes())
+                    import square
+                    return square
+
+                square_module = await load_python_file()
+            `);
+            console.log('Pyodide is ready to use!');
+            console.log(pyodide);
+            // Load and run the Python code
+            pyodide.globals.set("square", x => x * x)
+            return pyodide
+        }
+        pyodide = main();
+        // console.log(pyodide);
+        Promise.resolve(pyodide).then((pyodide) => {
+            // console.log(pyodide);
+            const calculateButton = document.getElementById('calculate');
+            const numberInput = document.getElementById('inputNo');
+            const resultElement = document.getElementById('result');
+
+            calculateButton.addEventListener('click', async () => {
+                const inputNo = parseInt(numberInput.value);
+                // Print pyodide version
+                console.log(pyodide);
+                // --- Start of the code : Local and Remote Python Function ---
+                // Status: successful
+                console.log("local Square Function");
+                let result = pyodide.runPython('square(' + inputNo + ')');
+                resultElement.textContent = `The square of ${inputNo} is ${result}.`;
+                console.log('The square of ' + inputNo + ' is ' + result);
+                console.log("Remote Square Function");
+                result = pyodide.runPython('square_module.square(' + inputNo + ')');
+                console.log('The square of ' + inputNo + ' is ' + result);
+                // --- End of the code : Local and Remote Python Function ---
+                
+                // --- Start of the code : File I/O ---
+                // Status: successful
+                /*
+                const dirHandle = await showDirectoryPicker();
+                const permissionStatus = await dirHandle.requestPermission({
+                mode: "readwrite",
+                });
+
+                if (permissionStatus !== "granted") {
+                throw new Error("readwrite access to directory not granted");
+                }
+                const nativefs = await pyodide.mountNativeFS("./", dirHandle);
+                pyodide.runPython(`
+                import os
+                print(os.listdir('./'))
+                `);
+                pyodide.runPython(`
+                with open('./new_file.txt', 'w') as f:
+                    f.write("` + result + `");
+                `);
+                await nativefs.syncfs();
+                */
+                // --- End of the code : File I/O ---
+
+                // --- Start of the code : Pyodide Built-in Package ---
+                // Status: successful
+                const numpyResult = pyodide.runPython(`
+                    np.sqrt(${inputNo})
+                `);
+                console.log(`The square root of ${inputNo} using numpy is ${numpyResult}`);
+                // --- End of the code : Pyodide Built-in Package ---
+
+                // --- Start of the code : LocalStorage Access ---
+                // Status: successful
+                pyodide.runPython(`
+                    import js
+                    localStorage = js.window.localStorage
+                    localStorage.setItem("lastNumber", ${inputNo})
+                    last_number = localStorage.getItem("lastNumber")
+                    print(f"Last number stored in localStorage: {last_number}")
+                `);
+                // --- End of the code : LocalStorage Access ---
+
+                // --- Start of the code : IndexedDB Access in JavaScript ---
+                // Status: successful
+                const request = indexedDB.open("MyJsDb", 1);
+
+                request.onupgradeneeded = function(event) {
+                    const db = event.target.result;
+                    db.createObjectStore("numbers", { keyPath: "id" });
+                };
+
+                request.onsuccess = function(event) {
+                    const db = event.target.result;
+                    const transaction = db.transaction(["numbers"], "readwrite");
+                    const store = transaction.objectStore("numbers");
+                    store.put({ id: 1, value: inputNo });
+                    store.put({ id: 3, value: 25 });
+                    console.log(typeof({ id: 3, value: 22 }))
+                    const getRequest = store.get(1);
+                    getRequest.onsuccess = function(event) {
+                        const result = event.target.result;
+                        console.log(`Number stored in IndexedDB: ${result.value}`);
+                    };
+                };
+
+                request.onerror = function(event) {
+                    console.error("IndexedDB error:", event.target.errorCode);
+                };
+                // --- End of the code : IndexedDB Access in JavaScript ---
+            });
+        });
+    </script>
+</body>
+
+</html>

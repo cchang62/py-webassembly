@@ -5,6 +5,8 @@
     <meta charset="utf-8">
     <title>Running Python in the browser using WebAssembly and Pyodide</title>
     <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js"></script>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/boost.js"></script>
 </head>
 
 <body>
@@ -12,6 +14,11 @@
     <input type="number" id="inputNo" placeholder="Enter a number">
     <button id="calculate">Calculate</button>
     <p id="result"></p>
+    <h1>Pyodide JSON to Base64 Image Example</h1>
+    <button id="generateImage">Generate Image</button>
+    <div id="imageContainer"></div>
+    <h1>Highcharts Line Chart with Boost Module</h1>
+    <div id="highchartContainer" style="height: 400px; width: 600px;"></div>
     <script>
         var pyodide;
         
@@ -21,8 +28,25 @@
             await pyodide.loadPackage('micropip');
             await pyodide.runPythonAsync(`
                 import micropip
-                await micropip.install('numpy')
+                await micropip.install('numpy', keep_going=True)
             `);
+
+            // Install the wheel for generate_highcharts_image from _highcharts-poetry/dist
+            /*
+            await pyodide.runPythonAsync(`
+                await micropip.install('./_highcharts-poetry/dist/_highcharts_poetry-0.1.0-py3-none-any.whl', keep_going=True)
+            `);
+            */
+
+            /*
+            // Handle potential missing wheels for esprima
+            await pyodide.runPythonAsync(`
+                try:
+                    await micropip.install('esprima<5.0.0,>=4.0.1', keep_going=True)
+                except Exception as e:
+                    print(f"Warning: Could not install esprima: {e}")
+            `);
+*/
             await pyodide.runPythonAsync(`
                 import numpy as np
                 from pyodide.http import pyfetch
@@ -49,6 +73,7 @@
             const calculateButton = document.getElementById('calculate');
             const numberInput = document.getElementById('inputNo');
             const resultElement = document.getElementById('result');
+            const generateImage = document.getElementById("generateImage");
 
             calculateButton.addEventListener('click', async () => {
                 const inputNo = parseInt(numberInput.value);
@@ -97,7 +122,7 @@
                 console.log(`The square root of ${inputNo} using numpy is ${numpyResult}`);
                 // --- End of the code : Pyodide Built-in Package ---
 
-                // --- Start of the code : LocalStorage Access ---
+                // --- Start of the code : LocalStorage Access in Python ---
                 // Status: successful
                 pyodide.runPython(`
                     import js
@@ -106,10 +131,11 @@
                     last_number = localStorage.getItem("lastNumber")
                     print(f"Last number stored in localStorage: {last_number}")
                 `);
-                // --- End of the code : LocalStorage Access ---
+                // --- End of the code : LocalStorage Access in Python ---
 
-                // --- Start of the code : IndexedDB Access ---
-                // Status: failed
+                // --- Start of the code : IndexedDB Access in Python ---
+                // Status: not working
+                /*
                 let pyJson = JSON.stringify({ id: 1, number: inputNo });
                 pyodide.runPython(`
                     import js
@@ -126,7 +152,7 @@
                         from pyodide.code import run_js
                         js_object = run_js("({ id: 1, number: ${inputNo}})")
                         # js_object = { 'id': 1, 'number': ${inputNo}}
-                        store.put(js_object, 1) # Failed here with error: TypeError: Failed to execute 'put' on 'IDBObjectStore': The object store uses in-line keys and the key parameter was provided.
+                        store.put(js_object, 1)
                         store.get(1).onsuccess = on_get_success
 
                     def on_get_success(event):
@@ -137,7 +163,8 @@
                     request.onupgradeneeded = on_upgrade_needed
                     request.onsuccess = on_success
                 `);
-                // --- End of the code : IndexedDB Access ---
+                */
+                // --- End of the code : IndexedDB Access in Python ---
 
                 // --- Start of the code : IndexedDB Access in JavaScript ---
                 // Status: successful
@@ -166,6 +193,121 @@
                     console.error("IndexedDB error:", event.target.errorCode);
                 };
                 // --- End of the code : IndexedDB Access in JavaScript ---
+            });
+
+            generateImage.addEventListener('click', async () => {
+                // --- Start of the code : Return base64 image in JavaScript ---
+                await pyodide.loadPackage("pillow");
+
+                // Fetch and load the generate_image.py file
+                await pyodide.runPythonAsync(`
+                from pyodide.http import pyfetch
+                response = await pyfetch("generate_image.py")
+                with open("generate_image.py", "wb") as f:
+                    f.write(await response.bytes())
+                import generate_image
+                `);
+
+                // JSON object to send to Python
+                const jsonObject = {
+                    text: "Hello, World!",
+                    fontSize: 20,
+                    width: 200,
+                    height: 100,
+                };
+
+                // Pass JSON object to Python and execute the script
+                const base64Image = await pyodide.runPythonAsync(`
+                import json
+                input_json = ${JSON.stringify(jsonObject)}
+                generate_image.generate_image(json.dumps(input_json))
+                `);
+
+                // Render the base64 image in the browser
+                const imgElement = document.createElement("img");
+                imgElement.src = `data:image/png;base64,${base64Image}`;
+                document.body.appendChild(imgElement);
+                // --- End of the code : Return base64 image in JavaScript ---
+/*
+                // --- Start of the code : Highcharts Python Edition Base64 Image ---
+                // Status: Failed
+                // JSON object to send to Python for chart configuration
+                const chartConfig = {
+                    chart: {
+                        type: 'line'
+                    },
+                    title: {
+                        text: 'Highcharts Python Edition Example'
+                    },
+                    xAxis: {
+                        categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun']
+                    },
+                    yAxis: {
+                        title: {
+                            text: 'Values'
+                        }
+                    },
+                    series: [{
+                        name: 'Sample Data',
+                        data: [29.9, 71.5, 106.4, 129.2, 144.0, 176.0]
+                    }]
+                };
+
+                // Pass chart configuration to Python and execute the script
+                const base64ImageHighcharts = await pyodide.runPythonAsync(`
+                    import json
+                    from generate_highcharts_image import generate_chart_image
+                    input_config = ${JSON.stringify(chartConfig)}
+                    generate_chart_image(json.dumps(input_config))
+                `);
+
+                // Render the base64 image in the browser
+                const imgElementHighcharts = document.createElement("img");
+                imgElementHighcharts.src = `data:image/png;base64,${base64ImageHighcharts}`;
+                document.body.appendChild(imgElementHighcharts);
+                // --- End of the code : Highcharts Python Edition Base64 Image ---
+                */
+            });
+
+        });
+
+        // Highcharts Line Chart with Boost Module
+        document.addEventListener("DOMContentLoaded", function () {
+            Highcharts.chart('highchartContainer', {
+                chart: {
+                    type: 'line',
+                    zoomType: 'x'
+                },
+                boost: {
+                    useGPUTranslations: true,
+                    usePreAllocated: true
+                },
+                title: {
+                    text: 'Highcharts Boost Module Example'
+                },
+                subtitle: {
+                    text: 'Zoom in to inspect the data'
+                },
+                xAxis: {
+                    title: {
+                        text: 'X-Axis'
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'Y-Axis'
+                    }
+                },
+                series: [{
+                    name: 'Random Data',
+                    data: (function () {
+                        const data = [];
+                        for (let i = 0; i < 50000; i++) {
+                            data.push(Math.random() * 100);
+                        }
+                        return data;
+                    })()
+                }]
             });
         });
     </script>

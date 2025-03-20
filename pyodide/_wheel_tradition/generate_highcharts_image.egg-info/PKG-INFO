@@ -1,0 +1,5 @@
+Metadata-Version: 2.2
+Name: generate_highcharts_image
+Version: 0.1.0
+Requires-Dist: highcharts_core
+Dynamic: requires-dist
