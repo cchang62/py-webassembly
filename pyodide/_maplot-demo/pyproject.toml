@@ -1,15 +1,14 @@
 [tool.poetry]
-name = "-highcharts-poetry"
+name = "maplot-demo"
 version = "0.1.0"
 description = ""
 authors = ["cchang62 <thompson292@gmail.com>"]
 readme = "README.md"
-packages = [{include = "generate_highcharts_image"}]
+packages = [{include = "_maplot_demo"}]
 
 [tool.poetry.dependencies]
 python = "^3.10"
-highcharts-core = "^1.10.3"
-esprima = "*"
+matplotlib = "^3.10.1"
 
 
 [build-system]

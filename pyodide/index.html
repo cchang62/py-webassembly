@@ -37,6 +37,9 @@
                 await micropip.install('./_highcharts-poetry/dist/_highcharts_poetry-0.1.0-py3-none-any.whl', keep_going=True)
             `);
             */
+            await pyodide.runPythonAsync(`
+                await micropip.install('./_maplot-demo/dist/maplot_demo-0.1.0-py3-none-any.whl', keep_going=True)
+            `);
 
             /*
             // Handle potential missing wheels for esprima
@@ -267,6 +270,14 @@
                 document.body.appendChild(imgElementHighcharts);
                 // --- End of the code : Highcharts Python Edition Base64 Image ---
                 */
+                const base64ImageHighcharts = await pyodide.runPythonAsync(`
+                    generate_line_image()
+                `);
+
+                // Render the base64 image in the browser
+                const imgElementHighcharts = document.createElement("img");
+                imgElementHighcharts.src = `data:image/png;base64,${base64ImageHighcharts}`;
+                document.body.appendChild(imgElementHighcharts);
             });
 
         });

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>Running Python in the browser using WebAssembly and Pyodide</title>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/pyodide/v0.23.0/full/pyodide.js"></script>
+</head>
+
+<body>
+    <h1>Pyodide Matplot Base64 Image Example</h1>
+    <button id="generateImage">Generate Image</button>
+    <div id="imageContainer"></div>
+    <script>
+        let pyodide;
+
+        async function initializePyodide() {
+            const pyodideInstance = await loadPyodide();
+            await pyodideInstance.loadPackage('micropip');
+            await pyodideInstance.runPythonAsync(`
+                import micropip
+                await micropip.install('./_my-matplot/dist/my_matplot-0.1.0-py3-none-any.whl')
+            `);
+            return pyodideInstance;
+        }
+
+        async function generateImage(pyodideInstance) {
+            const base64Image = await pyodideInstance.runPythonAsync(`
+                from matplot_line import generate_line_image
+                generate_line_image()
+            `);
+
+            const imgElement = document.createElement("img");
+            imgElement.src = `data:image/png;base64,${base64Image}`;
+            document.body.appendChild(imgElement);
+        }
+
+        (async () => {
+            pyodide = await initializePyodide();
+            document.getElementById('generateImage').addEventListener('click', () => generateImage(pyodide));
+        })();
+    </script>
+</body>
+
+</html>
